@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <title>Dashboard Prospection</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    h1 { text-align: center; }
+    canvas { max-width: 800px; margin: auto; display: block; }
+  </style>
+</head>
+<body>
+  <h1>RDV de Prospection par Semaine</h1>
+  <canvas id="chart"></canvas>
+
+  <script>
+    const CSV_URL = "data.csv";
+
+    async function loadCSV(url) {
+      const res = await fetch(url);
+      const text = await res.text();
+      const [header, ...rows] = text.trim().split(/\r?\n/);
+      return rows.map(line => {
+        const [semaine, rdv] = line.split(",");
+        return { semaine, rdv: Number(rdv) };
+      });
+    }
+
+    (async () => {
+      const data = await loadCSV(CSV_URL);
+      const ctx = document.getElementById('chart');
+
+      new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: data.map(d => d.semaine),
+          datasets: [{
+            label: 'Nombre de RDV',
+            data: data.map(d => d.rdv),
+            borderColor: '#4f46e5',
+            backgroundColor: 'rgba(79,70,229,0.2)',
+            fill: true,
+            tension: 0.3
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            title: { display: true, text: 'Suivi des RDV de Prospection' }
+          },
+          scales: {
+            y: { beginAtZero: true, title: { display: true, text: 'RDV' } },
+            x: { title: { display: true, text: 'Semaine' } }
+          }
+        }
+      });
+    })();
+  </script>
+</body>
+</html>
