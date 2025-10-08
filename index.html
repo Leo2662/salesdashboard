@@ -1,25 +1,428 @@
 <!DOCTYPE html>
-<html>
+<html lang="fr">
 <head>
-  <title>Tableau de bord RDV</title>
-  <script src="https://cdn.jsdelivr.net</script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Tableau de bord RDV (hebdomadaire)</title>
+  https://cdn.jsdelivr.net
+  https://cdn.jsdelivr.net/npm/chart.js@4.4.4</script>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --panel: #111827;
+      --text: #e5e7eb;
+      --muted: #9ca3af;
+      --accent: #3b82f6;
+      --accent2: #22c55e;
+      --danger: #ef4444;
+    }
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: linear-gradient(180deg, #0b1220 0%, #0f172a 100%);
+      color: var(--text);
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+    }
+    .container {
+      max-width: 1100px;
+      margin: 40px auto;
+      padding: 0 16px;
+    }
+    header {
+      margin-bottom: 16px;
+    }
+    h1 {
+      font-size: 1.8rem;
+      margin: 0 0 6px;
+    }
+    .sub {
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: 1.5fr 1fr;
+      gap: 16px;
+    }
+    .card {
+      background: rgba(17, 24, 39, 0.8);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.25);
+      border-radius: 14px;
+      padding: 16px;
+      backdrop-filter: blur(6px);
+    }
+    .kpis {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    .kpi {
+      background: linear-gradient(180deg, rgba(30,41,59,0.8), rgba(17,24,39,0.75));
+      border: 1px solid rgba(255,255,255,0.06);
+      padding: 12px;
+      border-radius: 12px;
+    }
+    .kpi .label {
+      color: var(--muted);
+      font-size: 0.8rem;
+      margin-bottom: 6px;
+    }
+    .kpi .value {
+      font-size: 1.4rem;
+      font-weight: 700;
+    }
+    .controls {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+    button, input[type="number"], input[type="week"] {
+      border-radius: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      background: #0b1220;
+      color: var(--text);
+      padding: 10px 12px;
+      font-size: 0.95rem;
+      outline: none;
+    }
+    button {
+      cursor: pointer;
+      background: linear-gradient(180deg, #2563eb, #1d4ed8);
+      border: none;
+      transition: transform 0.06s ease, filter 0.2s ease;
+    }
+    button.secondary {
+      background: linear-gradient(180deg, #374151, #1f2937);
+    }
+    button:active {
+      transform: translateY(1px);
+      filter: brightness(0.95);
+    }
+    form.add-form {
+      display: grid;
+      grid-template-columns: 1fr 1fr auto;
+      gap: 8px;
+      margin-top: 6px;
+    }
+    .status {
+      font-size: 0.9rem;
+      color: var(--muted);
+      margin-top: 8px;
+      min-height: 1.2em;
+    }
+    .status.error { color: var(--danger); }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.95rem;
+      margin-top: 6px;
+    }
+    th, td {
+      padding: 10px;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      text-align: left;
+    }
+    th { color: var(--muted); font-weight: 600; }
+    .muted { color: var(--muted); }
+    .footer-tip {
+      color: var(--muted);
+      font-size: 0.85rem;
+      margin-top: 10px;
+    }
+    @media (max-width: 900px) {
+      .grid { grid-template-columns: 1fr; }
+      .kpis { grid-template-columns: 1fr; }
+      form.add-form { grid-template-columns: 1fr; }
+    }
+  </style>
 </head>
 <body>
-  <h1>Mes RDV par semaine</h1>
-  <canvas id="rdvChart"></canvas>
+  <div class="container">
+    <header>
+      <h1>Tableau de bord RDV (hebdomadaire)</h1>
+      <div class="sub">Suivi du nombre de rendez-vous par semaine – ESN / ingénieur d’affaires</div>
+    </header>
+
+    <!-- KPI -->
+    <section class="kpis">
+      <div class="kpi">
+        <div class="label">Total 4 dernières semaines</div>
+        <div id="kpi-last4" class="value">—</div>
+      </div>
+      <div class="kpi">
+        <div class="label">Moyenne hebdo</div>
+        <div id="kpi-avg" class="value">—</div>
+      </div>
+      <div class="kpi">
+        <div class="label">Semaine la plus haute</div>
+        <div id="kpi-peak" class="value">—</div>
+      </div>
+    </section>
+
+    <div class="grid">
+      <!-- Chart + Controls -->
+      <section class="card">
+        <div class="controls">
+          <button id="refreshBtn" title="Recharger les données">🔄 Rafraîchir</button>
+          <span id="loading" class="muted">Prêt.</span>
+        </div>
+        <canvas id="rdvChart" height="120"></canvas>
+        <div class="footer-tip">
+          Astuce : sur mobile, pince/zoom pour agrandir. Les données sont agrégées par semaine (format <code>YYYY-W##</code>).
+        </div>
+      </section>
+
+      <!-- Form + Raw data -->
+      <section class="card">
+        <h3 style="margin:0 0 8px;">Ajouter des RDV</h3>
+        <form id="addForm" class="add-form">
+          <!-- Semaine ISO; value ex: 2025-W40 -->
+          <input id="weekInput" type="week" required />
+          <input id="countInput" type="number" min="0" step="1" placeholder="Nombre de RDV" required />
+          <button type="submit">➕ Ajouter</button>
+        </form>
+        <div id="formStatus" class="status"></div>
+
+        <h3 style="margin:14px 0 6px;">Données brutes</h3>
+        <div class="muted" style="font-size:0.9rem">Synchronisé depuis l'API.</div>
+        <table id="dataTable">
+          <thead>
+            <tr><th>Semaine</th><th>RDV</th></tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </section>
+    </div>
+
+    <p class="footer-tip">
+      API utilisée : <code id="apiUrlLabel"></code><br />
+      Endpoints attendus : <code>GET /rdv</code> → <small>renvoie une liste d'objets <code>{ week: "YYYY-W##", count: number }</code></small>,
+      <code>POST /rdv</code> → <small>ajoute <code>{ week, count }</code></small>.
+    </p>
+  </div>
+
   <script>
-    const ctx = document.getElementById('rdvChart');
-    const rdvChart = new Chart(ctx, {
-      type: 'bar',
-      data: {
-        labels: ['Semaine 1', 'Semaine 2', 'Semaine 3'],
-        datasets: [{
-          label: 'Nombre de RDV',
-          data: [5, 8, 6],
-          backgroundColor: 'rgba(54, 162, 235, 0.6)'
-        }]
+    // ============================
+    // 🔧 Paramètres
+    // ============================
+    const API_BASE = "https://salesdashboard-backend-65h0.onrender.com";
+    const ENDPOINT_RDV = `${API_BASE}/rdv`;
+
+    // UI refs
+    const loadingEl = document.getElementById("loading");
+    const apiUrlLabel = document.getElementById("apiUrlLabel");
+    const kpiLast4 = document.getElementById("kpi-last4");
+    const kpiAvg   = document.getElementById("kpi-avg");
+    const kpiPeak  = document.getElementById("kpi-peak");
+
+    apiUrlLabel.textContent = ENDPOINT_RDV;
+
+    // ============================
+    // 📊 Chart.js setup
+    // ============================
+    const ctx = document.getElementById("rdvChart").getContext("2d");
+    let chart;
+
+    function createChart(labels, values) {
+      if (chart) chart.destroy();
+      chart = new Chart(ctx, {
+        type: "bar",
+        data: {
+          labels,
+          datasets: [{
+            label: "RDV / semaine",
+            data: values,
+            backgroundColor: "rgba(59, 130, 246, 0.6)",
+            borderColor: "rgba(59, 130, 246, 1)",
+            borderWidth: 1.5,
+            borderRadius: 6,
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { labels: { color: "#e5e7eb" } },
+            tooltip: {
+              callbacks: {
+                label: (ctx) => ` ${ctx.parsed.y} RDV`
+              }
+            }
+          },
+          scales: {
+            x: { ticks: { color: "#cbd5e1" }, grid: { color: "rgba(255,255,255,0.06)" } },
+            y: { ticks: { color: "#cbd5e1" }, grid: { color: "rgba(255,255,255,0.06)" }, beginAtZero: true, suggestedMax: Math.max(5, Math.ceil(Math.max(...values, 0) * 1.2)) }
+          }
+        }
+      });
+    }
+
+    // ============================
+    // 🧠 Helpers
+    // ============================
+
+    // Tri des semaines ISO sous forme "YYYY-W##"
+    function sortIsoWeeks(weeks) {
+      return [...weeks].sort((a, b) => {
+        const [ya, wa] = a.split("-W").map(Number);
+        const [yb, wb] = b.split("-W").map(Number);
+        return ya === yb ? wa - wb : ya - yb;
+      });
+    }
+
+    // Agrège [{ week, count }] -> { "YYYY-W##": totalCount }
+    function aggregateByWeek(items) {
+      const acc = {};
+      for (const it of items) {
+        if (!it) continue;
+        // Support de quelques variantes possibles du backend
+        const week = it.week || it.semaine || it.isoWeek || it.iso_week || it.date; // fallback grossier
+        let count = it.count ?? it.value ?? it.rdv ?? it.nb ?? 0;
+        count = Number(count) || 0;
+        if (!week || typeof week !== "string") continue;
+        acc[week] = (acc[week] ?? 0) + count;
+      }
+      return acc;
+    }
+
+    // Calcul KPIs
+    function updateKpis(weeksSorted, aggregated) {
+      const values = weeksSorted.map(w => aggregated[w] ?? 0);
+      const avg = values.length ? (values.reduce((a,b) => a+b, 0) / values.length) : 0;
+      const peakVal = values.length ? Math.max(...values) : 0;
+      const peakIdx = values.indexOf(peakVal);
+      const peakWeek = peakIdx >= 0 ? weeksSorted[peakIdx] : "—";
+
+      kpiAvg.textContent = avg.toFixed(1);
+      kpiPeak.textContent = peakVal ? `${peakVal} (${peakWeek})` : "—";
+
+      // Dernières 4 semaines
+      const last4 = values.slice(-4);
+      const sumLast4 = last4.reduce((a,b) => a+b, 0);
+      kpiLast4.textContent = values.length ? sumLast4 : "—";
+    }
+
+    function renderTable(weeksSorted, aggregated) {
+      const tbody = document.querySelector("#dataTable tbody");
+      tbody.innerHTML = "";
+      for (const w of weeksSorted) {
+        const tr = document.createElement("tr");
+        const tdW = document.createElement("td");
+        const tdC = document.createElement("td");
+        tdW.textContent = w;
+        tdC.textContent = aggregated[w] ?? 0;
+        tr.appendChild(tdW);
+        tr.appendChild(tdC);
+        tbody.appendChild(tr);
+      }
+      if (weeksSorted.length === 0) {
+        const tr = document.createElement("tr");
+        const td = document.createElement("td");
+        td.colSpan = 2;
+        td.className = "muted";
+        td.textContent = "Aucune donnée pour le moment.";
+        tr.appendChild(td);
+        tbody.appendChild(tr);
+      }
+    }
+
+    // ============================
+    // 🔄 Fetch & Update
+    // ============================
+    async function loadData() {
+      loadingEl.textContent = "Chargement…";
+      try {
+        const res = await fetch(ENDPOINT_RDV, { method: "GET" });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+
+        // On s'attend à un tableau d'objets { week: "YYYY-W##", count: number }
+        const aggregated = aggregateByWeek(Array.isArray(data) ? data : []);
+        const weeksSorted = sortIsoWeeks(Object.keys(aggregated));
+        const values = weeksSorted.map(w => aggregated[w]);
+
+        createChart(weeksSorted, values);
+        renderTable(weeksSorted, aggregated);
+        updateKpis(weeksSorted, aggregated);
+
+        loadingEl.textContent = `Synchronisé (${new Date().toLocaleTimeString("fr-FR")})`;
+      } catch (err) {
+        console.error(err);
+        loadingEl.textContent = "Erreur de chargement (vérifie l'API & CORS).";
+      }
+    }
+
+    // ============================
+    // ➕ Ajout d'une entrée
+    // ============================
+    const addForm = document.getElementById("addForm");
+    const weekInput = document.getElementById("weekInput");
+    const countInput = document.getElementById("countInput");
+    const formStatus = document.getElementById("formStatus");
+
+    addForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      formStatus.textContent = "Envoi…";
+      formStatus.classList.remove("error");
+      const week = weekInput.value;    // ex: "2025-W40"
+      const count = Number(countInput.value);
+
+      if (!week || !Number.isFinite(count) || count < 0) {
+        formStatus.textContent = "Veuillez saisir une semaine valide et un nombre de RDV ≥ 0.";
+        formStatus.classList.add("error");
+        return;
+      }
+
+      try {
+        const res = await fetch(ENDPOINT_RDV, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ week, count })
+        });
+        if (!res.ok) {
+          const text = await res.text();
+          throw new Error(`HTTP ${res.status}: ${text}`);
+        }
+        formStatus.textContent = "✅ RDV ajouté ! Rafraîchissement…";
+        addForm.reset();
+        await loadData();
+        formStatus.textContent = "✅ Données à jour.";
+      } catch (err) {
+        console.error(err);
+        formStatus.textContent = "❌ Échec de l'ajout (API/CORS).";
+        formStatus.classList.add("error");
       }
     });
+
+    // ============================
+    // 🔘 Bouton refresh
+    // ============================
+    document.getElementById("refreshBtn").addEventListener("click", loadData);
+
+    // ============================
+    // 🚀 Init
+    // ============================
+    // Préremplir l'input semaine avec la semaine en cours (si supporté)
+    (function presetWeek() {
+      try {
+        const now = new Date();
+        // Approximation pour ISO week (suffisant pour préremplir)
+        const tmp = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
+        const dayNum = (tmp.getUTCDay() + 6) % 7;       // 0..6 (lundi=0)
+        tmp.setUTCDate(tmp.getUTCDate() - dayNum + 3);  // jeudi
+        const firstThursday = new Date(Date.UTC(tmp.getUTCFullYear(),0,4));
+        const weekNum = 1 + Math.round(((tmp - firstThursday) / 86400000 - 3 + ((firstThursday.getUTCDay()+6)%7)) / 7);
+        const yyyy = tmp.getUTCFullYear();
+        const ww = String(weekNum).padStart(2, "0");
+        weekInput.value = `${yyyy}-W${ww}`;
+      } catch(_) {}
+    })();
+
+    loadData();
   </script>
 </body>
 </html>
