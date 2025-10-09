@@ -1,38 +1,70 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>PoC Sheets</title>
+<meta charset="UTF-8">
+<title>Dashboard Commercial</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+   body { font-family: sans-serif; margin: 40px; background: #f7f7f7; }
+   h1 { color: #333; }
+   table { border-collapse: collapse; width: 100%; margin-top: 1em; }
+   th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
+   th { background: #eee; }
+   form { margin-bottom: 2em; }
+   input, textarea { padding: 6px; margin: 4px; }
+   button { padding: 6px 12px; cursor: pointer; }
+</style>
 </head>
 <body>
-<h1>Contact</h1>
+<h1>🏆 Mes Wins Commerciales</h1>
 <form id="form">
-<input name="nom" placeholder="Nom" required><br>
-<input name="email" placeholder="Email" required><br>
-<textarea name="message" placeholder="Message" required></textarea><br>
-<button type="submit">Envoyer</button>
+<input name="client" placeholder="Client" required>
+<input name="montant" type="number" placeholder="Montant (€)" required>
+<input name="date" type="date">
+<input name="commentaire" placeholder="Commentaire">
+<button type="submit">Ajouter</button>
 </form>
-<pre id="output"></pre>
+<table id="table">
+<thead>
+<tr><th>Client</th><th>Montant (€)</th><th>Date</th><th>Commentaire</th><th></th></tr>
+</thead>
+<tbody></tbody>
+</table>
 <script>
-   const backend = "https://salesdashboard-backend-hjxn.onrender.com";
-   const form = document.getElementById("form");
-   const output = document.getElementById("output");
-   form.addEventListener("submit", async (e) => {
+   const backend = "https://salesdashboard-backend-hjxn.onrender.com"; // ← ton URL Render
+   async function loadWins() {
+     const res = await fetch(`${backend}/wins`);
+     const wins = await res.json();
+     const tbody = document.querySelector("#table tbody");
+     tbody.innerHTML = "";
+     for (const w of wins) {
+       const tr = document.createElement("tr");
+       tr.innerHTML = `
+<td>${w.client}</td>
+<td>${w.montant}</td>
+<td>${w.date}</td>
+<td>${w.commentaire}</td>
+<td><button onclick="deleteWin(${w.id})">🗑️</button></td>
+       `;
+       tbody.appendChild(tr);
+     }
+   }
+   async function deleteWin(id) {
+     await fetch(`${backend}/wins/${id}`, { method: "DELETE" });
+     loadWins();
+   }
+   document.getElementById("form").addEventListener("submit", async (e) => {
      e.preventDefault();
-     const data = Object.fromEntries(new FormData(form).entries());
-     const res = await fetch(`${backend}/add`, {
+     const data = Object.fromEntries(new FormData(e.target).entries());
+     await fetch(`${backend}/wins`, {
        method: "POST",
        headers: { "Content-Type": "application/json" },
        body: JSON.stringify(data),
      });
-     output.textContent = await res.text();
-     form.reset();
+     e.target.reset();
+     loadWins();
    });
-   // Affiche la liste existante
-   fetch(`${backend}/list`)
-     .then(r => r.json())
-     .then(d => output.textContent = JSON.stringify(d, null, 2));
+   loadWins();
 </script>
 </body>
 </html>
