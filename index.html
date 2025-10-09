@@ -7,31 +7,39 @@
 <style>
    body { font-family: sans-serif; margin: 40px; background: #f7f7f7; }
    h1 { color: #333; }
-   table { border-collapse: collapse; width: 100%; margin-top: 1em; }
+   table { border-collapse: collapse; width: 100%; margin-top: 1em; background: white; }
    th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
    th { background: #eee; }
-   form { margin-bottom: 2em; }
-   input, textarea { padding: 6px; margin: 4px; }
+   form { margin-bottom: 2em; background: #fff; padding: 10px; border-radius: 4px; }
+   input { padding: 6px; margin: 4px; }
    button { padding: 6px 12px; cursor: pointer; }
 </style>
 </head>
 <body>
-<h1>🏆 Mes Wins Commerciales</h1>
+<h1>🏆 Dashboard Commercial</h1>
 <form id="form">
+<input name="collaborateur" placeholder="Collaborateur" required>
 <input name="client" placeholder="Client" required>
-<input name="montant" type="number" placeholder="Montant (€)" required>
-<input name="date" type="date">
-<input name="commentaire" placeholder="Commentaire">
+<label>Date closing :</label>
+<input name="dateClosing" type="date">
+<label>Date démarrage :</label>
+<input name="dateDemarrage" type="date">
 <button type="submit">Ajouter</button>
 </form>
 <table id="table">
 <thead>
-<tr><th>Client</th><th>Montant (€)</th><th>Date</th><th>Commentaire</th><th></th></tr>
+<tr>
+<th>Collaborateur</th>
+<th>Client</th>
+<th>Date closing</th>
+<th>Date démarrage</th>
+<th></th>
+</tr>
 </thead>
 <tbody></tbody>
 </table>
 <script>
-   const backend = "https://salesdashboard-backend-hjxn.onrender.com"; // ← ton URL Render
+   const backend = "https://salesdashboard-backend-hjxn.onrender.com"; // ← ton URL Render ici
    async function loadWins() {
      const res = await fetch(`${backend}/wins`);
      const wins = await res.json();
@@ -40,10 +48,10 @@
      for (const w of wins) {
        const tr = document.createElement("tr");
        tr.innerHTML = `
+<td>${w.collaborateur}</td>
 <td>${w.client}</td>
-<td>${w.montant}</td>
-<td>${w.date}</td>
-<td>${w.commentaire}</td>
+<td>${w.dateClosing || "-"}</td>
+<td>${w.dateDemarrage || "-"}</td>
 <td><button onclick="deleteWin(${w.id})">🗑️</button></td>
        `;
        tbody.appendChild(tr);
